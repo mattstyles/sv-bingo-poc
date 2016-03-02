@@ -1,0 +1,42 @@
+{
+  "name": "sv-bingo-poc",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Quick authoritative server example",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf lib && mkdir lib",
+    "prebuild": "npm run clean",
+    "build": "babel src --out-dir lib && cp -r public lib",
+    "watch": "babel src --out-dir lib --watch",
+    "reload": "supervisor -w lib -- lib | bunyan -o short",
+    "prestart": "npm run build",
+    "start": "node lib | bunyan -o short",
+    "dev": "( npm run watch & npm run reload )"
+  },
+  "babel": {
+    "presets": [
+      "node5"
+    ],
+    "plugins": [
+      "transform-class-properties"
+    ]
+  },
+  "author": "Matt Styles <matt@veryfizzyjelly.com> (http://github.com/mattstyles)",
+  "license": "ISC",
+  "dependencies": {
+    "koa": "^2.0.0-alpha.3",
+    "koa-bunyan-log": "^2.0.1",
+    "koa-send": "^3.1.0",
+    "koa-socket": "^4.2.1",
+    "koa-static": "^2.0.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.6.0",
+    "babel-plugin-transform-class-properties": "^6.6.0",
+    "babel-preset-node5": "^10.7.0",
+    "bunyan": "^1.7.1",
+    "supervisor": "^0.9.1"
+  }
+}
