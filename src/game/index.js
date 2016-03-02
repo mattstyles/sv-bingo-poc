@@ -11,7 +11,7 @@ const logger = new Logger({
 
 const NUM_PLAYERS = 2
 const NUM_BALLS = 90
-const TICK_SPEED = 1000
+const TICK_SPEED = 100
 const PLAYER_NUMS = 5
 
 const GAME_STATES = {
@@ -48,6 +48,7 @@ class Game {
     this.players = new Map()
 
     this.state = GAME_STATES.WAITING
+    this.tick = null
   }
 
   /**
@@ -72,7 +73,8 @@ class Game {
     logger.info( 'Adding player', ctx.socket.id )
     this.players.set( ctx.socket.id, new Player({
       socket: ctx.socket,
-      numbers: createPool( PLAYER_NUMS )
+      numbers: createPool( PLAYER_NUMS ),
+      onComplete: this.onPlayerComplete
     }))
 
     // Attach disconnect now that this player is in the system
@@ -120,28 +122,48 @@ class Game {
     this.players.forEach( player => player.start() )
 
     // Give the UI a chance before spitting balls out of the pool
-    setTimeout( this.gameTick, 1000 )
+    this.tick = setTimeout( this.gameTick, 1000 )
   }
 
   gameTick = () => {
 
-    let number = this.pool.pop()
+    this.draw()
 
-    logger.info( 'Drawing number', number )
-    this.broadcast( EVENTS.NUMBER, {
-      number: number
-    })
-
-    // Game exit condition
-    if ( this.pool.length === 0 ) {
-      logger.info( 'Game has finished' )
-      this.broadcast( EVENTS.WINNER, {
-        player: '@TODO who is the winner?'
-      })
+    if ( this.state !== GAME_STATES.PLAYING ) {
       return
     }
 
-    setTimeout( this.gameTick, TICK_SPEED )
+    // Game exit condition, we'll only hit this if all players disconnect
+    // which is a state we should handle and stop the game
+    if ( this.pool.length === 0 ) {
+      logger.info( 'Game has finished' )
+      logger.warn( 'There were no winners' )
+      return
+    }
+
+    this.tick = setTimeout( this.gameTick, TICK_SPEED )
+  }
+
+  draw() {
+    let number = this.pool.pop()
+    logger.info( 'Drawing number', number )
+
+    this.players.forEach( player => player.checkNumber( number ) )
+  }
+
+  onPlayerComplete = player => {
+    // Update the state
+    this.state = GAME_STATES.WAITING
+    if ( this.tick ) {
+      clearTimeout( this.tick )
+    }
+
+    this.broadcast( EVENTS.WINNER, {
+      winner: player.socket.id.slice( 2 )
+    })
+
+    logger.info( 'Game has finished' )
+    logger.info( 'The winner was', player.socket.id.slice( 2 ) )
   }
 }
 

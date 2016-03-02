@@ -61,6 +61,10 @@
   <script>
     var socket = io( 'http://0.0.0.0:3000' )
 
+    socket.on( 'connect', () => {
+      console.log( 'Connected as', socket.id )
+    })
+
     socket.on( 'connect:full', event => {
       console.log( 'lobby full' )
     })
@@ -77,6 +81,11 @@
 
     socket.on( 'game:number', data => {
       console.log( 'New number', data.number )
+    })
+
+    socket.on( 'game:winner', data => {
+      console.log( 'The game has finished' )
+      console.log( 'The winner was', data.winner )
     })
   </script>
 </body>
