@@ -26,6 +26,7 @@
   "author": "Matt Styles <matt@veryfizzyjelly.com> (http://github.com/mattstyles)",
   "license": "ISC",
   "dependencies": {
+    "knuth-shuffle": "^1.0.1",
     "koa": "^2.0.0-alpha.3",
     "koa-bunyan-log": "^2.0.1",
     "koa-send": "^3.1.0",

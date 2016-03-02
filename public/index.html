@@ -70,8 +70,12 @@
     })
 
 
-    socket.on( 'test', data => {
-      console.log( data )
+    socket.on( 'game:starting', data => {
+      console.log( 'New game is starting, and you are in. Good luck!' )
+    })
+
+    socket.on( 'game:number', data => {
+      console.log( 'New number', data.number )
     })
   </script>
 </body>

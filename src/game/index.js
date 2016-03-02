@@ -1,5 +1,6 @@
 
 const Logger = require( 'koa-bunyan-log' )
+const shuffle = require( 'knuth-shuffle' ).knuthShuffle
 
 const EVENTS = require( '../events' )
 const Player = require( './player' )
@@ -9,6 +10,8 @@ const logger = new Logger({
 })
 
 const NUM_PLAYERS = 2
+const NUM_BALLS = 90
+const TICK_SPEED = 1000
 
 const GAME_STATES = {
   WAITING: 'game:waiting',
@@ -25,7 +28,7 @@ class Game {
 
     this.io = opts.io
 
-    this.connections = new Map()
+    this.players = new Map()
 
     this.state = GAME_STATES.WAITING
   }
@@ -43,22 +46,22 @@ class Game {
     }
 
     // Check full game
-    if ( !this.connections.size >= NUM_PLAYERS  ) {
+    if ( !this.players.size >= NUM_PLAYERS  ) {
       logger.info( 'Lobby full, can not connect', ctx.socket.id )
       ctx.socket.emit( EVENTS.FULL )
       return
     }
 
     logger.info( 'Adding player', ctx.socket.id )
-    this.connections.set( ctx.socket.id, new Player( ctx.socket ) )
+    this.players.set( ctx.socket.id, new Player( ctx.socket ) )
 
     // Attach disconnect now that this player is in the system
     ctx.socket.on( 'disconnect', () => {
       this.onDisconnect( ctx.socket.id )
     })
 
-    // Check if the game is full and can begin
-    if ( this.connections.size === NUM_PLAYERS ) {
+    // Check if the game is now full and can begin
+    if ( this.players.size === NUM_PLAYERS ) {
       logger.info( `Lobby has ${ NUM_PLAYERS } players, getting it on` )
       this.start()
     }
@@ -70,7 +73,19 @@ class Game {
    */
   onDisconnect = id => {
     logger.info( 'Client disconnected', id )
-    this.connections.delete( id )
+    if ( this.players.has( id ) ) {
+      this.players.delete( id )
+    }
+  }
+
+  /**
+   * Helper to send messages to all players
+   * Not all connections will be players
+   */
+  broadcast( msg, data ) {
+    this.players.forEach( player => {
+      player.emit( msg, data )
+    })
   }
 
   /**
@@ -80,22 +95,37 @@ class Game {
     logger.info( 'New game starting' )
     this.state = GAME_STATES.PLAYING
 
-    var count = 0
+    this.pool = []
+    for ( var i = 0; i < NUM_BALLS; i++ ) {
+      this.pool.push( i )
+    }
+    this.pool = shuffle( this.pool )
 
-    const tick = () => {
-      logger.info( 'tick' )
-      this.connections.forEach( player => {
-        player.emit( 'test', {
-          foo: 'bitches'
-        })
+    this.broadcast( EVENTS.STARTING )
+
+    // Give the UI a chance before spitting balls out of the pool
+    setTimeout( this.gameTick, 1000 )
+  }
+
+  gameTick = () => {
+
+    let number = this.pool.pop()
+
+    logger.info( 'Drawing number', number )
+    this.broadcast( EVENTS.NUMBER, {
+      number: number
+    })
+
+    // Game exit condition
+    if ( this.pool.length === 0 ) {
+      logger.info( 'Game has finished' )
+      this.broadcast( EVENTS.WINNER, {
+        player: '@TODO who is the winner?'
       })
-
-      if ( count++ < 20 ) {
-        setTimeout( tick, 1000 )
-      }
+      return
     }
 
-    tick()
+    setTimeout( this.gameTick, TICK_SPEED )
   }
 }
 
