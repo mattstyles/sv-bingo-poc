@@ -72,6 +72,7 @@
 
     socket.on( 'game:starting', data => {
       console.log( 'New game is starting, and you are in. Good luck!' )
+      console.log( 'Your numbers', data.numbers )
     })
 
     socket.on( 'game:number', data => {

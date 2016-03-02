@@ -12,10 +12,27 @@ const logger = new Logger({
 const NUM_PLAYERS = 2
 const NUM_BALLS = 90
 const TICK_SPEED = 1000
+const PLAYER_NUMS = 5
 
 const GAME_STATES = {
   WAITING: 'game:waiting',
   PLAYING: 'game:playing'
+}
+
+
+/**
+ * Used as a base for the shuffling
+ */
+const masterPool = []
+for ( var i = 0; i < NUM_BALLS; i++ ) {
+  masterPool.push( i )
+}
+
+/**
+ * Pulls out a shuffled array from the masterPool
+ */
+function createPool( num ) {
+  return shuffle( masterPool.slice( 0 ) ).slice( NUM_BALLS - num )
 }
 
 
@@ -53,7 +70,10 @@ class Game {
     }
 
     logger.info( 'Adding player', ctx.socket.id )
-    this.players.set( ctx.socket.id, new Player( ctx.socket ) )
+    this.players.set( ctx.socket.id, new Player({
+      socket: ctx.socket,
+      numbers: createPool( PLAYER_NUMS )
+    }))
 
     // Attach disconnect now that this player is in the system
     ctx.socket.on( 'disconnect', () => {
@@ -95,13 +115,9 @@ class Game {
     logger.info( 'New game starting' )
     this.state = GAME_STATES.PLAYING
 
-    this.pool = []
-    for ( var i = 0; i < NUM_BALLS; i++ ) {
-      this.pool.push( i )
-    }
-    this.pool = shuffle( this.pool )
+    this.pool = createPool( NUM_BALLS )
 
-    this.broadcast( EVENTS.STARTING )
+    this.players.forEach( player => player.start() )
 
     // Give the UI a chance before spitting balls out of the pool
     setTimeout( this.gameTick, 1000 )
